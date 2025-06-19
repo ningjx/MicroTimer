@@ -23,7 +23,6 @@ namespace MicroTimer
         private static bool _stop = true;
         public static bool Stop => _stop;
         private static bool _swapText = false;
-        private static DispatcherTimer? _uiTimer;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -35,7 +34,6 @@ namespace MicroTimer
         public Handler()
         {
             InitializeTimer();
-            InitializeUITimer();
         }
 
         private void InitializeTimer()
@@ -43,21 +41,6 @@ namespace MicroTimer
             _timer = new CosTimer(_period, TimerMode.PERIODIC);
             _timer.OnRunning += _timer_OnRunning;
             _timer.Start();
-        }
-
-        private void InitializeUITimer()
-        {
-            // 创建UI定时器，与渲染同步
-            _uiTimer = new DispatcherTimer(DispatcherPriority.Render);
-            _uiTimer.Interval = TimeSpan.FromMilliseconds(_period);
-            _uiTimer.Tick += (sender, e) =>
-            {
-                if (!_pause && !_stop)
-                {
-                    UpdateTime();
-                }
-            };
-            _uiTimer.Start();
         }
 
         private void _timer_OnRunning(ulong ticks)
@@ -87,10 +70,6 @@ namespace MicroTimer
             if (_timer != null)
             {
                 _timer.Dispose();
-            }
-            if (_uiTimer != null)
-            {
-                _uiTimer.Stop();
             }
         }
 
