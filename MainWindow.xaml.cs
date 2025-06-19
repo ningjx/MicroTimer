@@ -1,20 +1,10 @@
-﻿using System.Reflection.Metadata;
-using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Windows.Threading;
+﻿using System.Globalization;
 using System.Runtime.InteropServices;
-using System.Windows.Media.Animation;
-using System.Globalization;
+using System.Windows;
+using System.Windows.Input;
 using System.Windows.Interop;
-using System.Diagnostics;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 namespace MicroTimer;
 
@@ -23,8 +13,6 @@ namespace MicroTimer;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private static Handler? _handler;
-
     // P/Invoke declarations for getting display refresh rate
     [DllImport("user32.dll")]
     private static extern IntPtr GetDC(IntPtr hWnd);
@@ -50,8 +38,7 @@ public partial class MainWindow : Window
         // 配置高刷新率显示器支持
         ConfigureHighRefreshRate();
 
-        _handler = new Handler();
-        this.DataContext = _handler;
+        this.DataContext = Handler.Instance;
 
         // 设置窗口属性以支持高刷新率
         this.Loaded += MainWindow_Loaded;
@@ -80,13 +67,13 @@ public partial class MainWindow : Window
             if (!_spaceKeyIsDown)
             {
                 _spaceKeyIsDown = true;
-                _handler?.SingleAction();
+                Handler.Instance?.SingleAction();
             }
         }
         else if (e.Key == Key.R)
         {
             e.Handled = true;
-            _handler?.ResetAction();
+            Handler.Instance?.ResetAction();
         }
     }
 
@@ -104,7 +91,7 @@ public partial class MainWindow : Window
         if (!_mouseLeftIsDown)
         {
             _mouseLeftIsDown = true;
-            _handler?.SingleAction();
+            Handler.Instance?.SingleAction();
         }
     }
 
@@ -137,6 +124,7 @@ public partial class MainWindow : Window
     {
         // 获取显示器刷新率信息
         var refreshRate = GetDisplayRefreshRate();
+        Handler.Instance.SetRefreshRate(refreshRate);
         string titleZh = $"MicroTimer - 当前刷新率: {refreshRate}Hz - 精度{(1000.0 / refreshRate).ToString("F2")}ms - 空格/左键: 开始/暂停 - R/鼠标中键: 重置 - 右键: 放大毫秒";
         string titleEn = $"MicroTimer - Refresh Rate: {refreshRate}Hz - Precision {(1000.0 / refreshRate).ToString("F2")}ms - Space/LeftClick: Start/Pause - R/MiddleClick: Reset - RightClick: Enlarge ms";
         var culture = CultureInfo.CurrentUICulture;
@@ -186,20 +174,20 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         // 清理资源
-        _handler?.Dispose();
+        Handler.Instance.Dispose();
         base.OnClosed(e);
     }
 
     private void Window_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
-        _handler?.SwapText();
+        Handler.Instance.SwapText();
     }
 
     private void MainWindow_MouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton == MouseButton.Middle)
         {
-            _handler?.ResetAction();
+            Handler.Instance.ResetAction();
         }
     }
 

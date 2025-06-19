@@ -1,38 +1,42 @@
-﻿using NingSoft.CSharpTools;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
+﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Security.Permissions;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Media;
-using System.Windows.Threading;
-using static System.Net.Mime.MediaTypeNames;
-using CosTimer = NingSoft.CSharpTools.MicroTimer;
 
 namespace MicroTimer
 {
     public class Handler : INotifyPropertyChanged
     {
+        private static Handler? _handler;
         private static CosTimer? _timer = null;
-        private static int _period = 1; // 1毫秒周期，充分利用144Hz屏幕
-        private static bool _pause = true; // 初始为暂停
+        private static int _period = 1; // 计时周期
+        private static bool _pause = true;
         private static bool _stop = true;
-        public static bool Stop => _stop;
         private static bool _swapText = false;
+        private static int _freshRate { get; set; } = 200;
+        private static int _refreshTicks = 0;
+        private static int _refreshInterval = 0;
 
         public event PropertyChangedEventHandler? PropertyChanged;
+        public static bool Stop => _stop;
 
-        // 改为实例属性而不是静态属性
-        public TimeOnly TimeNow { get; private set; } = new(0, 0, 0, 0);
+        public static TimeOnly TimeNow { get; private set; } = new(0, 0, 0, 0);
         public string TimeNowString => _swapText ? TimeNow.ToString("fff") : TimeNow.ToString("HH:mm:ss");
         public string MsNowString => _swapText ? TimeNow.ToString("HH:mm:ss") : TimeNow.ToString("fff");
 
-        public Handler()
+        public static Handler Instance
         {
+            get
+            {
+                if (_handler == null)
+                {
+                    _handler = new Handler();
+                }
+                return _handler;
+            }
+        }
+
+        private Handler()
+        {
+            SetRefreshRate(_freshRate);
             InitializeTimer();
         }
 
@@ -54,7 +58,19 @@ namespace MicroTimer
         private void UpdateTime()
         {
             TimeNow = TimeNow.Add(new TimeSpan(0, 0, 0, 0, _period));
+            if (_refreshTicks >= _refreshInterval)
+            {
+                _refreshTicks = 0;
+                ChangeUI();
+            }
+            else
+            {
+                _refreshTicks++;
+            }
+        }
 
+        private void ChangeUI()
+        {
             OnPropertyChanged(nameof(TimeNow));
             OnPropertyChanged(nameof(TimeNowString));
             OnPropertyChanged(nameof(MsNowString));
@@ -71,6 +87,14 @@ namespace MicroTimer
             {
                 _timer.Dispose();
             }
+            _handler = null;
+        }
+
+        public void SetRefreshRate(int rate)
+        {
+            if (rate <= 0) return;
+            _freshRate = rate;
+            _refreshInterval = (int)(1000.0 / _freshRate / _period - 1);
         }
 
         public void SwapText()
@@ -91,6 +115,7 @@ namespace MicroTimer
                 _pause = true;
             }
             UpdateTime();
+            ChangeUI();
         }
 
         public void ResetAction()
@@ -99,9 +124,7 @@ namespace MicroTimer
             _pause = true;
             _stop = true;
             TimeNow = new(0, 0, 0, 0);
-            OnPropertyChanged(nameof(TimeNow));
-            OnPropertyChanged(nameof(TimeNowString));
-            OnPropertyChanged(nameof(MsNowString));
+            ChangeUI();
         }
     }
 }
